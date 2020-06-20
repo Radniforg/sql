@@ -17,7 +17,7 @@ def create_db(conn): # создает таблицы
     birth TIMESTAMP WITH TIME ZONE
     )''');
     cur.execute('''CREATE TABLE IF NOT EXISTS course (
-    id SERIAL PRIMARY KEY,
+    id INT PRIMARY KEY,
     name VARCHAR(100) NOT NULL
     )''');
     cur.execute('''CREATE TABLE IF NOT EXISTS student_course (
@@ -28,13 +28,18 @@ def create_db(conn): # создает таблицы
     print('Tables created')
 
 
-def get_students(conn): # возвращает студентов определенного курса
+def get_students(course_id, conn): # возвращает студентов определенного курса
     cur = conn.cursor()
-    cur.execute("""select student_id, student_name, course_name from student_course sc
-    join student on student_id = sc.student_id
-    join course on course.id = sc.course_id""")
+    cur.execute("""select s.id, s.name, c.name from student_course sc
+    join student s on s.id = sc.student_id
+    join course c on c.id = sc.course_id
+    """)
     fetch = cur.fetchall()
-    return fetch
+    current_course = []
+    for student in fetch:
+        if student[0] == int(course_id):
+            current_course.append(student)
+    return current_course
 
 def add_student(student, conn): # просто создает студента
     cur = conn.cursor()
@@ -52,25 +57,18 @@ def add_students(course_id, students, conn): # создает студентов
                 count_check = 1
                 print('check')
         if count_check == 0:
-            cur.execute("INSERT INTO course (name) VALUES (%s)",
-                        ('temp_name', ))
+            cur.execute("INSERT INTO course (id, name) VALUES (%s, %s)",
+                        (course_id, 'temp_name'))
     except IndexError:
-        cur.execute("INSERT INTO course (name) VALUES (%s)",
-                    ('temp_name',))
+        cur.execute("INSERT INTO course (id, name) VALUES (%s, %s)",
+                    (course_id, 'temp_name'))
     for student in students:
-        print(student)
         cur.execute("INSERT INTO student (name, gpa, birth) VALUES (%s, %s, %s)",
                 (student['name'], student['gpa'], student['birth']))
         cur.execute('SELECT LASTVAL()')
         temp_id = cur.fetchone()[0]
-        print(temp_id)
         cur.execute("INSERT INTO student_course (student_id, course_id) VALUES (%s, %s)",
                     (temp_id, course_id))
-
-def add_course(name, conn): # просто создает студента
-    cur = conn.cursor()
-    cur.execute("INSERT INTO course (name) VALUES (%s)",
-                (name, ))
 
 
 def get_student(student_id, conn):
@@ -78,7 +76,6 @@ def get_student(student_id, conn):
     cur.execute("SELECT * FROM student;")
     for student in cur.fetchall():
         if student[0] == int(student_id):
-            print('Something')
             return student
     return 'Student not found'
 
@@ -95,10 +92,7 @@ with pg.connect(database = 'test', user = 'test', password = '1234') as connecti
     create_db(connection)
     students = [{'name': 'Train', 'gpa': '3.6', 'birth': '1998-05-31 09:26:56.66 +02:00'},
                 {'name': 'Max', 'gpa': '4.3', 'birth': '1996-03-14 09:26:56.66 +02:00'}]
-    #add_course('temp', connection)
     add_students(1, students, connection)
-    print(get_students(connection))
+    print(get_students(1, connection))
     # add_student(students[0], connection)
     # print(get_student('1', connection))
-    # print(get_student('2', connection))
-    # restart(connection)
